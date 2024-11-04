@@ -12,6 +12,10 @@ function PrintUsage() {
     echo "        -s  execute signin now"
 }
 
+function debug_print() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
 function handle_error() {
     echo "$1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
@@ -61,7 +65,7 @@ function PreWork() {
     local morning_minutes_str=$(IFS=,; echo "${sorted_morning_minutes[*]}")
     local evening_minutes_str=$(IFS=,; echo "${sorted_evening_minutes[*]}")
 
-    is_workday=$(python3 CheckWorkDay.py)
+    is_workday=$(python3 $SCRIPT_DIR/CheckWorkDay.py)
     status=$?
 
     case "$status" in
