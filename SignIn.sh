@@ -1,15 +1,11 @@
 #!/bin/bash
 
-DEVICE=392QBFCC222C6
-SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
-LOG_FILE="$SCRIPT_DIR/err.log"
-
 function PrintUsage() {
     echo "usage:  $0 {-i|-u|-p|-s}"
-    echo "        -i  init Python library"
-    echo "        -u  update Python library"
-    echo "        -p  setup cron jobs for auto signin"
-    echo "        -s  execute signin now"
+    echo "        -i  初始化Python依赖库"
+    echo "        -u  更新Python依赖库"
+    echo "        -p  设置自动签到定时任务"
+    echo "        -s  立即执行签到操作"
 }
 
 function debug_print() {
@@ -21,6 +17,21 @@ function handle_error() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
     exit 1
 }
+
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+LOG_FILE="$SCRIPT_DIR/err.log"
+CONFIG_FILE="$SCRIPT_DIR/device.conf"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "检测到首次运行，需要创建设备配置文件"
+    read -p "请输入ADB设备序列号（可通过 adb devices 查看）: " DEVICE_SN
+    [ -z "$DEVICE_SN" ] && handle_error "设备序列号不能为空"
+    echo "DEVICE=$DEVICE_SN" > "$CONFIG_FILE" || handle_error "配置文件创建失败"
+    echo "配置文件已创建: $CONFIG_FILE"
+fi
+
+source "$CONFIG_FILE"
+[ -z "$DEVICE" ] && handle_error "配置错误：请检查$CONFIG_FILE中的DEVICE设置"
 
 if [ "$#" -ne 1 ]; then
     PrintUsage
