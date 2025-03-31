@@ -27,6 +27,11 @@ if [ ! -f "$CONFIG_FILE" ]; then
     read -p "请输入ADB设备序列号（可通过 adb devices 查看）: " DEVICE_SN
     [ -z "$DEVICE_SN" ] && handle_error "设备序列号不能为空"
     echo "DEVICE=$DEVICE_SN" > "$CONFIG_FILE" || handle_error "配置文件创建失败"
+    # 添加时间范围配置
+    echo "MORNING_START=8:30" >> "$CONFIG_FILE"
+    echo "MORNING_END=9:00" >> "$CONFIG_FILE"
+    echo "EVENING_START=18:30" >> "$CONFIG_FILE"
+    echo "EVENING_END=19:00" >> "$CONFIG_FILE"
     echo "配置文件已创建: $CONFIG_FILE"
 fi
 
@@ -44,8 +49,25 @@ function get_rand() {
 
 function generate_random_minutes() {
     local -n array=$1
+    local start_time end_time hour minute
+    
+    if [ "$1" == "morning_minutes" ]; then
+        IFS=':' read -r hour minute <<< "$MORNING_START"
+        local start_minutes=$((hour * 60 + minute))
+        IFS=':' read -r hour minute <<< "$MORNING_END"
+        local end_minutes=$((hour * 60 + minute))
+    else
+        IFS=':' read -r hour minute <<< "$EVENING_START"
+        local start_minutes=$((hour * 60 + minute))
+        IFS=':' read -r hour minute <<< "$EVENING_END"
+        local end_minutes=$((hour * 60 + minute))
+    fi
+
     while [ "${#array[@]}" -lt 3 ]; do
-        local new_random=$(get_rand 30 50)
+        local random_minutes=$(get_rand $start_minutes $end_minutes)
+        local new_hour=$((random_minutes / 60))
+        local new_minute=$((random_minutes % 60))
+        local new_random="$new_minute $new_hour"
         [[ ! " ${array[*]} " =~ " $new_random " ]] && array+=("$new_random")
     done
 }
@@ -70,12 +92,6 @@ function PreWork() {
     generate_random_minutes morning_minutes
     generate_random_minutes evening_minutes
 
-    IFS=$'\n' sorted_morning_minutes=($(sort -n <<<"${morning_minutes[*]}"))
-    IFS=$'\n' sorted_evening_minutes=($(sort -n <<<"${evening_minutes[*]}"))
-
-    local morning_minutes_str=$(IFS=,; echo "${sorted_morning_minutes[*]}")
-    local evening_minutes_str=$(IFS=,; echo "${sorted_evening_minutes[*]}")
-
     is_workday=$(python3 $SCRIPT_DIR/CheckWorkDay.py)
     status=$?
 
@@ -85,8 +101,12 @@ function PreWork() {
         0)
             echo "30 1 * * * $SCRIPT_DIR/SignIn.sh -p" > "$SCRIPT_DIR/crontab_self"
             if [[ "$is_workday" == "true" ]]; then
-                echo "$morning_minutes_str 8 * * * $SCRIPT_DIR/SignIn.sh -s" >> "$SCRIPT_DIR/crontab_self"
-                echo "$evening_minutes_str 18 * * * $SCRIPT_DIR/SignIn.sh -s" >> "$SCRIPT_DIR/crontab_self"
+                for time in "${morning_minutes[@]}"; do
+                    echo "$time * * * $SCRIPT_DIR/SignIn.sh -s" >> "$SCRIPT_DIR/crontab_self"
+                done
+                for time in "${evening_minutes[@]}"; do
+                    echo "$time * * * $SCRIPT_DIR/SignIn.sh -s" >> "$SCRIPT_DIR/crontab_self"
+                done
             fi
             crontab "$SCRIPT_DIR/crontab_self" || handle_error "Failed to update crontab."
             ;;
