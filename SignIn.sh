@@ -138,7 +138,7 @@ function perform_sign_in() {
     local actions=(
         "input keyevent KEYCODE_POWER:1"
         "input keyevent 82:1"
-        "input swipe $middle_x $((height * 4 / 10)) $middle_x $((height * 80 / 100)) 500:1"
+        "input text \"${DEVICE_PSW}\":1"
         "input tap $((width * 3 / 4 + width / 8)) $((height * 91 / 100)):255"
         "input tap $middle_x $signin_y:2"
         "input keyevent KEYCODE_APP_SWITCH:1"
